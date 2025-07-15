@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Savings Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        label { display: block; margin: 10px 0; }
+        #result { margin-top: 20px; font-weight: bold; }
+        #chart-container { margin-top: 20px; max-width: 800px; }
+        #export-csv { margin-top: 10px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Bitcoin Savings Calculator</h1>
+    <form id="calculator">
+        <label>Initial Bitcoin Price (USD): 
+            <input type="number" id="initial_price" min="0" step="0.01" required>
+        </label>
+        <label>Savings Amount (USD): 
+            <input type="number" id="savings_amount" min="0" step="0.01" required>
+        </label>
+        <label>Savings Frequency: 
+            <select id="frequency">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="lump_sum">Lump Sum</option>
+            </select>
+        </label>
+        <label>Bitcoin Annual Growth (%): 
+            <input type="number" id="growth" min="0" step="0.01" required>
+        </label>
+        <label>Savings Start Date: 
+            <input type="date" id="start_date" required>
+        </label>
+        <label>Savings End Date: 
+            <input type="date" id="end_date" required>
+        </label>
+        <label>Purchase Date: 
+            <input type="date" id="purchase_date" required>
+        </label>
+        <label>Total Cost (USD): 
+            <input type="number" id="total_cost" min="0" step="0.01" required>
+        </label>
+        <label>Down Payment (USD): 
+            <input type="number" id="down_payment" min="0" step="0.01" value="0" required>
+        </label>
+        <label>Loan Interest Rate (%): 
+            <input type="number" id="interest_rate" min="0" step="0.01" required>
+        </label>
+        <label>Loan Term (months): 
+            <input type="number" id="loan_term" min="1" step="1" required>
+        </label>
+        <button type="button" onclick="calculate()">Calculate</button>
+        <button type="button" id="export-csv" onclick="exportToCSV()" style="display: none;">Export to CSV</button>
+    </form>
+    <div id="result"></div>
+    <div id="chart-container">
+        <canvas id="savingsChart"></canvas>
+    </div>
+    <script src="calculator.js"></script>
+    <script>
+        // Set default Bitcoin price ($119,962.37 on July 14, 2025)
+        document.getElementById('initial_price').value = 119962.37;
+        // Set default start date to today (July 14, 2025)
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        document.getElementById('start_date').value = `${year}-${month}-${day}`;
+        // Optional real-time price fetch (uncomment to use)
+        /*
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('initial_price').value = data.bitcoin.usd;
+            })
+            .catch(error => console.error('Error fetching Bitcoin price:', error));
+        */
+    </script>
+</body>
+</html>
