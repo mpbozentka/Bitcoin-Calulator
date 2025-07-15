@@ -62,8 +62,7 @@ function calculate() {
     let btcAtEnd = 0;
 
     // Define simulation period
-    const simulationEnd = new Date(purchaseDate);
-    simulationEnd.setMonth(simulationEnd.getMonth() + loanTerm);
+    const simulationEnd = new Date('2032-11-01'); // End at November 2032 (89 months total)
 
     // Generate monthly dates
     const monthlyDates = [];
