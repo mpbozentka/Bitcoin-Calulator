@@ -75,37 +75,57 @@ function calculate() {
     }
     // Debug log for number of months
     console.log('Number of months:', monthlyDates.length);
-// Simulate each month
-for (let i = 0; i < monthlyDates.length; i++) {
-    const date = monthlyDates[i];
-    const dateStr = date.toLocaleDateString();
 
-    // Add savings if within savings period
-    if (date >= startDate && date <= new Date('2026-12-31') && frequency !== 'lump_sum') {
-        let savingsUsdThisMonth;
-        if (frequency === 'monthly') {
-            savingsUsdThisMonth = savingsAmount;
-        } else if (frequency === 'weekly') {
-            const weeksPerMonth = 4.33;
-            savingsUsdThisMonth = savingsAmount * weeksPerMonth;
-        } else if (frequency === 'daily') {
-            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-            savingsUsdThisMonth = savingsAmount * daysInMonth;
+    // Simulate each month
+    for (let i = 0; i < monthlyDates.length; i++) {
+        const date = monthlyDates[i];
+        const dateStr = date.toLocaleDateString();
+
+        // Add savings if within savings period
+        if (date >= startDate && date <= new Date('2026-12-31') && frequency !== 'lump_sum') {
+            let savingsUsdThisMonth;
+            if (frequency === 'monthly') {
+                savingsUsdThisMonth = savingsAmount;
+            } else if (frequency === 'weekly') {
+                const weeksPerMonth = 4.33;
+                savingsUsdThisMonth = savingsAmount * weeksPerMonth;
+            } else if (frequency === 'daily') {
+                const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+                savingsUsdThisMonth = savingsAmount * daysInMonth;
+            }
+            btc += savingsUsdThisMonth / bitcoinPrice;
+            btc = Number(btc.toFixed(8));
         }
-        btc += savingsUsdThisMonth / bitcoinPrice;
-        btc = Number(btc.toFixed(8));
-    }
 
-    // Record BTC at key events
-    if (dateStr === startDate.toLocaleDateString()) {
-        btcAtStart = btc;
-    }
-    if (dateStr === purchaseDate.toLocaleDateString()) {
-        btcAtPurchase = btc;
-        // Apply down payment
-        if (downPayment > 0) {
-            const btcDownPayment = downPayment / bitcoinPrice;
-            if (btc < btcDownPayment) {
+        // Record BTC at key events
+        if (dateStr === startDate.toLocaleDateString()) {
+            btcAtStart = btc;
+        }
+        if (dateStr === purchaseDate.toLocaleDateString()) {
+            btcAtPurchase = btc;
+            // Apply down payment
+            if (downPayment > 0) {
+                const btcDownPayment = downPayment / bitcoinPrice;
+                if (btc < btcDownPayment) {
+                    shortfall = true;
+                    shortfallDate = dateStr;
+                    btc = 0;
+                    dates.push(dateStr);
+                    btcValues.push(0);
+                    usdValues.push(0);
+                    btcAtEnd = 0;
+                    break;
+                }
+                btc -= btcDownPayment;
+                btc = Number(btc.toFixed(8));
+            }
+        }
+
+        // Subtract loan payment if within loan period
+        const loanStart = new Date('2027-01-01');
+        if (!shortfall && date >= loanStart && date <= simulationEnd && loanAmount > 0) {
+            const btcPayment = payment / bitcoinPrice;
+            if (btc < btcPayment) {
                 shortfall = true;
                 shortfallDate = dateStr;
                 btc = 0;
@@ -115,42 +135,23 @@ for (let i = 0; i < monthlyDates.length; i++) {
                 btcAtEnd = 0;
                 break;
             }
-            btc -= btcDownPayment;
+            btc -= btcPayment;
             btc = Number(btc.toFixed(8));
         }
-    }
 
-    // Subtract loan payment if within loan period
-    const loanStart = new Date('2027-01-01');
-    if (!shortfall && date >= loanStart && date <= simulationEnd && loanAmount > 0) {
-        const btcPayment = payment / bitcoinPrice;
-        if (btc < btcPayment) {
-            shortfall = true;
-            shortfallDate = dateStr;
-            btc = 0;
+        // Record current state for chart (after all transactions)
+        if (!shortfall || i < monthlyDates.length - 1) {
             dates.push(dateStr);
-            btcValues.push(0);
-            usdValues.push(0);
-            btcAtEnd = 0;
-            break;
+            btcValues.push(btc);
+            usdValues.push(btc * bitcoinPrice);
         }
-        btc -= btcPayment;
-        btc = Number(btc.toFixed(8));
-    }
 
-    // Record current state for chart (after all transactions)
-    if (!shortfall || i < monthlyDates.length - 1) {
-        dates.push(dateStr);
-        btcValues.push(btc);
-        usdValues.push(btc * bitcoinPrice);
+        // Apply Bitcoin price growth for next iteration
+        bitcoinPrice *= (1 + monthlyGrowthRate);
+        bitcoinPrice = Number(bitcoinPrice.toFixed(2));
+        // Debug log for intermediate values
+        console.log(`Date: ${dateStr}, BTC: ${btc.toFixed(8)}, USD: ${(btc * bitcoinPrice).toFixed(2)}, Bitcoin Price: ${bitcoinPrice.toFixed(2)}`);
     }
-
-    // Apply Bitcoin price growth for next iteration
-    bitcoinPrice *= (1 + monthlyGrowthRate);
-    bitcoinPrice = Number(bitcoinPrice.toFixed(2));
-    // Debug log for intermediate values
-    console.log(`Date: ${dateStr}, BTC: ${btc.toFixed(8)}, USD: ${(btc * bitcoinPrice).toFixed(2)}, Bitcoin Price: ${bitcoinPrice.toFixed(2)}`);
-}
 
     // Record final state if no shortfall
     if (!shortfall && dates[dates.length - 1] !== simulationEnd.toLocaleDateString()) {
