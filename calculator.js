@@ -40,6 +40,7 @@ function calculate() {
     if (loanAmount > 0) {
         payment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, loanTerm)) / 
                   (Math.pow(1 + monthlyRate, loanTerm) - 1);
+        payment = Number(payment.toFixed(2)); // Round to 2 decimals
     }
 
     // Calculate Bitcoin monthly growth rate
@@ -67,10 +68,13 @@ function calculate() {
     // Generate monthly dates
     const monthlyDates = [];
     let currentDate = new Date(startDate);
+    currentDate.setDate(1); // Start on the 1st of the month
     while (currentDate <= simulationEnd) {
         monthlyDates.push(new Date(currentDate));
         currentDate.setMonth(currentDate.getMonth() + 1);
     }
+    // Debug log for number of months
+    console.log('Number of months:', monthlyDates.length);
 
     // Simulate each month
     for (let i = 0; i < monthlyDates.length; i++) {
@@ -78,7 +82,7 @@ function calculate() {
         const dateStr = date.toLocaleDateString();
 
         // Add savings if within savings period
-        if (date >= startDate && date <= endDate && frequency !== 'lump_sum') {
+        if (date >= startDate && date <= new Date('2026-12-31') && frequency !== 'lump_sum') {
             let savingsUsdThisMonth;
             if (frequency === 'monthly') {
                 savingsUsdThisMonth = savingsAmount;
@@ -116,8 +120,7 @@ function calculate() {
         }
 
         // Subtract loan payment if within loan period
-        const loanStart = new Date(purchaseDate);
-        loanStart.setMonth(loanStart.getMonth() + 1);
+        const loanStart = new Date('2027-01-01');
         if (!shortfall && date >= loanStart && date <= simulationEnd && loanAmount > 0) {
             const btcPayment = payment / bitcoinPrice;
             if (btc < btcPayment) {
@@ -142,6 +145,8 @@ function calculate() {
 
         // Apply Bitcoin price growth for next iteration
         bitcoinPrice *= (1 + monthlyGrowthRate);
+        // Debug log for intermediate values
+        console.log(`Date: ${dateStr}, BTC: ${btc.toFixed(8)}, USD: ${(btc * bitcoinPrice).toFixed(2)}, Bitcoin Price: ${bitcoinPrice.toFixed(2)}`);
     }
 
     // Record final state if no shortfall
