@@ -2,6 +2,9 @@
 let chartInstance = null;
 
 function calculate() {
+    // Log to confirm function is called
+    console.log('Calculate button clicked');
+
     // Destroy previous chart if it exists
     if (chartInstance) {
         chartInstance.destroy();
@@ -21,36 +24,45 @@ function calculate() {
     const interestRate = parseFloat(document.getElementById('interest_rate').value) / 100;
     const loanTerm = parseInt(document.getElementById('loan_term').value);
 
-    // Basic validation
+    // Enhanced validation
+    const resultDiv = document.getElementById('result');
+    if (isNaN(initialPrice) || isNaN(savingsAmount) || isNaN(growth) || isNaN(totalCost) ||
+        isNaN(downPayment) || isNaN(interestRate) || isNaN(loanTerm)) {
+        resultDiv.innerHTML = '<p style="color: red;">Error: All numeric inputs must be valid numbers.</p>';
+        console.error('Validation failed: Invalid numeric inputs');
+        return;
+    }
+    if (initialPrice <= 0 || savingsAmount < 0 || totalCost <= 0 || downPayment < 0 || interestRate < 0 || loanTerm <= 0) {
+        resultDiv.innerHTML = '<p style="color: red;">Error: Numeric inputs must be non-negative, and initial price/loan term must be positive.</p>';
+        console.error('Validation failed: Negative or zero inputs');
+        return;
+    }
     if (endDate < startDate || purchaseDate < endDate) {
-        document.getElementById('result').innerHTML = 'Error: Ensure Savings End Date is after Start Date, and Purchase Date is after End Date.';
+        resultDiv.innerHTML = '<p style="color: red;">Error: Ensure Savings End Date is after Start Date, and Purchase Date is after End Date.</p>';
+        console.error('Validation failed: Invalid date order');
         return;
     }
     if (downPayment > totalCost) {
-        document.getElementById('result').innerHTML = 'Error: Down payment cannot exceed total cost.';
+        resultDiv.innerHTML = '<p style="color: red;">Error: Down payment cannot exceed total cost.</p>';
+        console.error('Validation failed: Down payment exceeds total cost');
         return;
     }
 
-    // Calculate loan amount (total cost minus down payment)
+    // Calculate loan amount and monthly payment
     const loanAmount = totalCost - downPayment;
-
-    // Calculate monthly loan payment
     const monthlyRate = interestRate / 12;
     let payment = 0;
     if (loanAmount > 0) {
-        payment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, loanTerm)) / 
+        payment = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, loanTerm)) /
                   (Math.pow(1 + monthlyRate, loanTerm) - 1);
-        payment = Number(payment.toFixed(2)); // Round to 2 decimals
+        payment = Number(payment.toFixed(2));
     }
 
     // Calculate Bitcoin monthly growth rate
     const monthlyGrowthRate = Math.pow(1 + growth, 1 / 12) - 1;
 
-    // Initialize Bitcoin holdings and tracking arrays for chart
-    let btc = 0;
-    if (frequency === 'lump_sum') {
-        btc = savingsAmount / initialPrice;
-    }
+    // Initialize simulation variables
+    let btc = frequency === 'lump_sum' ? savingsAmount / initialPrice : 0;
     let bitcoinPrice = initialPrice;
     const dates = [];
     const btcValues = [];
@@ -61,33 +73,40 @@ function calculate() {
     let btcAtPurchase = 0;
     let btcAtEnd = 0;
 
-    // Define simulation period
-    const simulationEnd = new Date('2032-11-01'); // End at November 2032 (89 months total)
+    // Define simulation period (end at purchase date + loan term)
+    const simulationEnd = new Date(purchaseDate);
+    simulationEnd.setMonth(simulationEnd.getMonth() + loanTerm);
 
     // Generate monthly dates
     const monthlyDates = [];
     let currentDate = new Date(startDate);
-    currentDate.setDate(1); // Start on the 1st of the month
+    currentDate.setDate(1);
     while (currentDate <= simulationEnd) {
         monthlyDates.push(new Date(currentDate));
         currentDate.setMonth(currentDate.getMonth() + 1);
     }
-    // Debug log for number of months
-    console.log('Number of months:', monthlyDates.length);
 
     // Simulate each month
     for (let i = 0; i < monthlyDates.length; i++) {
         const date = monthlyDates[i];
         const dateStr = date.toLocaleDateString();
 
+        // Record current state
+        if (!shortfall || i < monthlyDates.length - 1) {
+            dates.push(dateStr);
+            btcValues.push(btc);
+            usdValues.push(btc * bitcoinPrice);
+        }
+
         // Add savings if within savings period
-        if (date >= startDate && date <= new Date('2026-12-31') && frequency !== 'lump_sum') {
-            let savingsUsdThisMonth;
+        if (date >= startDate && date <= endDate && frequency !== 'lump_sum') {
+            let savingsUsdThisMonth = 0;
             if (frequency === 'monthly') {
                 savingsUsdThisMonth = savingsAmount;
             } else if (frequency === 'weekly') {
-                const weeksPerMonth = 4.33;
-                savingsUsdThisMonth = savingsAmount * weeksPerMonth;
+                const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+                const weeksInMonth = daysInMonth / 7;
+                savingsUsdThisMonth = savingsAmount * weeksInMonth;
             } else if (frequency === 'daily') {
                 const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
                 savingsUsdThisMonth = savingsAmount * daysInMonth;
@@ -102,7 +121,6 @@ function calculate() {
         }
         if (dateStr === purchaseDate.toLocaleDateString()) {
             btcAtPurchase = btc;
-            // Apply down payment
             if (downPayment > 0) {
                 const btcDownPayment = downPayment / bitcoinPrice;
                 if (btc < btcDownPayment) {
@@ -121,8 +139,7 @@ function calculate() {
         }
 
         // Subtract loan payment if within loan period
-        const loanStart = new Date('2027-01-01');
-        if (!shortfall && date >= loanStart && date <= simulationEnd && loanAmount > 0) {
+        if (!shortfall && date >= purchaseDate && date <= simulationEnd && loanAmount > 0) {
             const btcPayment = payment / bitcoinPrice;
             if (btc < btcPayment) {
                 shortfall = true;
@@ -138,18 +155,9 @@ function calculate() {
             btc = Number(btc.toFixed(8));
         }
 
-        // Record current state for chart (after all transactions)
-        if (!shortfall || i < monthlyDates.length - 1) {
-            dates.push(dateStr);
-            btcValues.push(btc);
-            usdValues.push(btc * bitcoinPrice);
-        }
-
-        // Apply Bitcoin price growth for next iteration
+        // Apply Bitcoin price growth
         bitcoinPrice *= (1 + monthlyGrowthRate);
         bitcoinPrice = Number(bitcoinPrice.toFixed(2));
-        // Debug log for intermediate values
-        console.log(`Date: ${dateStr}, BTC: ${btc.toFixed(8)}, USD: ${(btc * bitcoinPrice).toFixed(2)}, Bitcoin Price: ${bitcoinPrice.toFixed(2)}`);
     }
 
     // Record final state if no shortfall
@@ -161,15 +169,14 @@ function calculate() {
     }
 
     // Display result
-    const resultDiv = document.getElementById('result');
     if (shortfall) {
-        resultDiv.innerHTML = `Insufficient Bitcoin to cover down payment or loan payments. Shortfall detected on ${shortfallDate}.<br>` +
-                              `Monthly Loan Payment: $${payment.toFixed(2)}`;
+        resultDiv.innerHTML = `<p style="color: red;">Insufficient Bitcoin to cover down payment or loan payments. Shortfall detected on ${shortfallDate}.</p>` +
+                             `<p>Monthly Loan Payment: $${payment.toFixed(2)}</p>`;
     } else {
         const finalUsdValue = btc * bitcoinPrice;
-        resultDiv.innerHTML = `Savings successfully covered down payment and all loan payments.<br>` +
-                              `Monthly Loan Payment: $${payment.toFixed(2)}<br>` +
-                              `Final Bitcoin holdings: ${btc.toFixed(6)} BTC, worth $${finalUsdValue.toFixed(2)} USD`;
+        resultDiv.innerHTML = `<p>Savings successfully covered down payment and all loan payments.</p>` +
+                             `<p>Monthly Loan Payment: $${payment.toFixed(2)}</p>` +
+                             `<p>Final Bitcoin holdings: ${btc.toFixed(6)} BTC, worth $${finalUsdValue.toFixed(2)} USD</p>`;
     }
 
     // Show CSV export button
@@ -185,20 +192,25 @@ function calculate() {
                 {
                     label: 'USD Value',
                     data: usdValues,
-                    borderColor: 'blue',
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
                     yAxisID: 'y-usd',
-                    fill: false
+                    fill: true,
+                    tension: 0.4
                 },
                 {
                     label: 'BTC Value',
                     data: btcValues,
-                    borderColor: 'orange',
+                    borderColor: '#f7931a',
+                    backgroundColor: 'rgba(247, 147, 26, 0.1)',
                     yAxisID: 'y-btc',
-                    fill: false
+                    fill: true,
+                    tension: 0.4
                 }
             ]
         },
         options: {
+            responsive: true,
             scales: {
                 x: {
                     title: { display: true, text: 'Date' }
@@ -226,10 +238,10 @@ function calculate() {
                             xMax: startDate.toLocaleDateString(),
                             borderColor: 'green',
                             borderWidth: 2,
-                            label: { 
-                                content: `Start Saving: ${btcAtStart.toFixed(6)} BTC`, 
-                                enabled: true, 
-                                position: 'top' 
+                            label: {
+                                content: `Start Saving: ${btcAtStart.toFixed(6)} BTC`,
+                                enabled: true,
+                                position: 'top'
                             }
                         },
                         {
@@ -238,10 +250,10 @@ function calculate() {
                             xMax: purchaseDate.toLocaleDateString(),
                             borderColor: 'purple',
                             borderWidth: 2,
-                            label: { 
-                                content: `Purchase: ${btcAtPurchase.toFixed(6)} BTC`, 
-                                enabled: true, 
-                                position: 'top' 
+                            label: {
+                                content: `Purchase: ${btcAtPurchase.toFixed(6)} BTC`,
+                                enabled: true,
+                                position: 'top'
                             }
                         },
                         shortfall ? {
@@ -250,10 +262,10 @@ function calculate() {
                             xMax: shortfallDate,
                             borderColor: 'red',
                             borderWidth: 2,
-                            label: { 
-                                content: `Shortfall: 0.000000 BTC`, 
-                                enabled: true, 
-                                position: 'top' 
+                            label: {
+                                content: `Shortfall: 0.000000 BTC`,
+                                enabled: true,
+                                position: 'top'
                             }
                         } : {
                             type: 'line',
@@ -261,13 +273,22 @@ function calculate() {
                             xMax: simulationEnd.toLocaleDateString(),
                             borderColor: 'black',
                             borderWidth: 2,
-                            label: { 
-                                content: `Loan Paid Off: ${btcAtEnd.toFixed(6)} BTC`, 
-                                enabled: true, 
-                                position: 'top' 
+                            label: {
+                                content: `Loan Paid Off: ${btcAtEnd.toFixed(6)} BTC`,
+                                enabled: true,
+                                position: 'top'
                             }
                         }
                     ]
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y;
+                            return `${label}: ${label.includes('USD') ? '$' + value.toFixed(2) : value.toFixed(6) + ' BTC'}`;
+                        }
+                    }
                 }
             }
         }
