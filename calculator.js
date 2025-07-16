@@ -91,8 +91,8 @@ function calculate() {
         const date = monthlyDates[i];
         const dateStr = date.toLocaleDateString();
 
-        // Record current state (only if no shortfall or not the last iteration)
-        if (!shortfall || i < monthlyDates.length - 1) {
+        // Record current state (only if no shortfall)
+        if (!shortfall) {
             dates.push(dateStr);
             btcValues.push(Number(btc.toFixed(8)));
             usdValues.push(Number((btc * bitcoinPrice).toFixed(2)));
@@ -126,6 +126,7 @@ function calculate() {
                 if (btc < btcDownPayment) {
                     shortfall = true;
                     shortfallDate = dateStr;
+                    // Push shortfall state and stop
                     dates.push(dateStr);
                     btcValues.push(0);
                     usdValues.push(0);
@@ -143,6 +144,7 @@ function calculate() {
             if (btc < btcPayment) {
                 shortfall = true;
                 shortfallDate = dateStr;
+                // Push shortfall state and stop
                 dates.push(dateStr);
                 btcValues.push(0);
                 usdValues.push(0);
@@ -299,7 +301,13 @@ function calculate() {
         usdValues: usdValues || 'undefined',
         datesLength: dates ? dates.length : 'undefined',
         btcValuesLength: btcValues ? btcValues.length : 'undefined',
-        usdValuesLength: usdValues ? usdValues.length : 'undefined'
+        usdValuesLength: usdValues ? usdValues.length : 'undefined',
+        sampleDates: dates ? dates.slice(0, 5) : 'undefined',
+        sampleBtcValues: btcValues ? btcValues.slice(0, 5) : 'undefined',
+        sampleUsdValues: usdValues ? usdValues.slice(0, 5) : 'undefined',
+        lastDates: dates ? dates.slice(-5) : 'undefined',
+        lastBtcValues: btcValues ? btcValues.slice(-5) : 'undefined',
+        lastUsdValues: usdValues ? usdValues.slice(-5) : 'undefined'
     });
     window.chartData = { dates, btcValues, usdValues };
 }
