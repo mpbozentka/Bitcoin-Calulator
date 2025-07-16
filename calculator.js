@@ -91,11 +91,11 @@ function calculate() {
         const date = monthlyDates[i];
         const dateStr = date.toLocaleDateString();
 
-        // Record current state
+        // Record current state (only if no shortfall or not the last iteration)
         if (!shortfall || i < monthlyDates.length - 1) {
             dates.push(dateStr);
-            btcValues.push(btc);
-            usdValues.push(btc * bitcoinPrice);
+            btcValues.push(Number(btc.toFixed(8)));
+            usdValues.push(Number((btc * bitcoinPrice).toFixed(2)));
         }
 
         // Add savings if within savings period
@@ -126,7 +126,6 @@ function calculate() {
                 if (btc < btcDownPayment) {
                     shortfall = true;
                     shortfallDate = dateStr;
-                    btc = 0;
                     dates.push(dateStr);
                     btcValues.push(0);
                     usdValues.push(0);
@@ -144,7 +143,6 @@ function calculate() {
             if (btc < btcPayment) {
                 shortfall = true;
                 shortfallDate = dateStr;
-                btc = 0;
                 dates.push(dateStr);
                 btcValues.push(0);
                 usdValues.push(0);
@@ -164,8 +162,8 @@ function calculate() {
     if (!shortfall && dates[dates.length - 1] !== simulationEnd.toLocaleDateString()) {
         btcAtEnd = btc;
         dates.push(simulationEnd.toLocaleDateString());
-        btcValues.push(btc);
-        usdValues.push(btc * bitcoinPrice);
+        btcValues.push(Number(btc.toFixed(8)));
+        usdValues.push(Number((btc * bitcoinPrice).toFixed(2)));
     }
 
     // Display result
@@ -295,16 +293,50 @@ function calculate() {
     });
 
     // Store data for CSV export
+    console.log('Before setting chartData:', {
+        dates: dates || 'undefined',
+        btcValues: btcValues || 'undefined',
+        usdValues: usdValues || 'undefined',
+        datesLength: dates ? dates.length : 'undefined',
+        btcValuesLength: btcValues ? btcValues.length : 'undefined',
+        usdValuesLength: usdValues ? usdValues.length : 'undefined'
+    });
     window.chartData = { dates, btcValues, usdValues };
 }
 
 function exportToCSV() {
+    if (!window.chartData || !window.chartData.dates || !window.chartData.btcValues || !window.chartData.usdValues) {
+        console.error('exportToCSV: chartData is missing or incomplete', window.chartData);
+        alert('Error: Please run a valid calculation first by clicking "Calculate".');
+        return;
+    }
     const { dates, btcValues, usdValues } = window.chartData;
+    if (dates.length === 0 || btcValues.length === 0 || usdValues.length === 0) {
+        console.error('exportToCSV: One or more arrays are empty', {
+            datesLength: dates.length,
+            btcValuesLength: btcValues.length,
+            usdValuesLength: usdValues.length
+        });
+        alert('Error: No data available to export.');
+        return;
+    }
     let csvContent = 'Date,BTC Value,USD Value\n';
     for (let i = 0; i < dates.length; i++) {
+        if (typeof btcValues[i] === 'undefined' || typeof usdValues[i] === 'undefined') {
+            console.error(`Invalid data at index ${i}:`, {
+                date: dates[i],
+                btc: btcValues[i] === undefined ? 'undefined' : btcValues[i],
+                usd: usdValues[i] === undefined ? 'undefined' : usdValues[i]
+            });
+            continue;
+        }
         csvContent += `${dates[i]},${btcValues[i].toFixed(6)},${usdValues[i].toFixed(2)}\n`;
     }
-
+    if (csvContent === 'Date,BTC Value,USD Value\n') {
+        console.error('exportToCSV: No valid data to export');
+        alert('Error: No valid data to export.');
+        return;
+    }
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
