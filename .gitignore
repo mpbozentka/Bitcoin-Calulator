@@ -1,0 +1,10 @@
+# VS Code
+.vscode/
+.history/
+
+# Operating System Files
+.DS_Store  # macOS
+Thumbs.db  # Windows
+
+# Other
+*.log
