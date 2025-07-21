@@ -16,20 +16,26 @@
         label {
             display: block;
             margin-top: 10px;
-            text-align: center; /* Center the label text */
+            text-align: center;
         }
         input, select, button {
             margin-top: 5px;
             padding: 5px;
             width: 100%;
             max-width: 300px;
-            display: block; /* Ensure each input is on its own line */
-            margin-left: auto; /* Center the input */
-            margin-right: auto; /* Center the input */
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
         }
         button {
             margin-top: 20px;
             cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
         #savingsChart {
             margin-top: 20px;
@@ -37,25 +43,25 @@
         }
         #result {
             margin-top: 20px;
-            text-align: center; /* Center the result text */
+            text-align: center;
         }
         #export-csv {
             display: none;
             margin-top: 10px;
-            margin-left: auto; /* Center the export button */
-            margin-right: auto; /* Center the export button */
+            margin-left: auto;
+            margin-right: auto;
         }
     </style>
 </head>
 <body>
     <h1>Bitcoin Savings Calculator</h1>
-    <form id="calculator">
-        <label for="initial_price">Initial Bitcoin Price (USD):</label>
-        <input type="number" id="initial_price" step="0.01" required>
-        
+    <form id="calculator" onsubmit="return false;">
+        <label for="initial_price">Initial Bitcoin Price (USD, fetched from API):</label>
+        <input type="number" id="initial_price" step="0.01" placeholder="Fetched from CoinGecko or enter manually">
+
         <label for="savings_amount">Savings Amount (USD):</label>
         <input type="number" id="savings_amount" step="0.01" required>
-        
+
         <label for="frequency">Savings Frequency:</label>
         <select id="frequency" required>
             <option value="lump_sum">Lump Sum</option>
@@ -63,51 +69,60 @@
             <option value="weekly">Weekly</option>
             <option value="daily">Daily</option>
         </select>
-        
+
         <label for="growth">Bitcoin Annual Growth (%):</label>
         <input type="number" id="growth" step="0.01" required>
-        
+
         <label for="start_date">Savings Start Date:</label>
         <input type="date" id="start_date" required>
-        
+
         <label for="end_date">Savings End Date:</label>
         <input type="date" id="end_date" required>
-        
+
         <label for="purchase_date">Purchase Date:</label>
         <input type="date" id="purchase_date" required>
-        
+
         <label for="total_cost">Total Cost (USD):</label>
         <input type="number" id="total_cost" step="0.01" required>
-        
+
         <label for="down_payment">Down Payment (USD):</label>
-        <input type="number" id="down_payment" step="0.01" value="0" required>
-        
+        <input type="number" id="down_payment" step="0.01" required>
+
         <label for="interest_rate">Loan Interest Rate (%):</label>
         <input type="number" id="interest_rate" step="0.01" required>
-        
+
         <label for="loan_term">Loan Term (months):</label>
         <input type="number" id="loan_term" required>
-        
+
         <button type="button" onclick="calculate()">Calculate</button>
     </form>
-    
+
     <div id="result"></div>
     <button id="export-csv" onclick="exportToCSV()">Export to CSV</button>
-    
+
     <canvas id="savingsChart"></canvas>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
     <script src="calculator.js"></script>
-    
+
     <script>
         // Set default values
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
-        document.getElementById('initial_price').value = '119962.37';
+        document.getElementById('initial_price').placeholder = 'Fetched from CoinGecko';
+        document.getElementById('savings_amount').value = '100';
+        document.getElementById('frequency').value = 'monthly';
+        document.getElementById('growth').value = '10';
         document.getElementById('start_date').value = `${year}-${month}-${day}`;
+        document.getElementById('end_date').value = '2026-12-01';
+        document.getElementById('purchase_date').value = '2027-01-01';
+        document.getElementById('total_cost').value = '50000';
+        document.getElementById('down_payment').value = '10000';
+        document.getElementById('interest_rate').value = '5';
+        document.getElementById('loan_term').value = '60';
     </script>
 </body>
 </html>

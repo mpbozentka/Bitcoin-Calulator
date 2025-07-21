@@ -1,7 +1,7 @@
 // Global variable to store Chart.js instance
 let chartInstance = null;
 
-function calculate() {
+async function calculate() {
     // Log to confirm function is called
     console.log('Calculate button clicked');
 
@@ -12,7 +12,22 @@ function calculate() {
     }
 
     // Retrieve and parse input values
-    const initialPrice = parseFloat(document.getElementById('initial_price').value);
+    let initialPrice;
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const data = await response.json();
+        initialPrice = data.bitcoin.usd;
+        console.log(`Fetched Bitcoin price: $${initialPrice}`);
+    } catch (error) {
+        console.error('Error fetching Bitcoin price:', error);
+        initialPrice = parseFloat(document.getElementById('initial_price').value);
+        if (isNaN(initialPrice)) {
+            document.getElementById('result').innerHTML = '<p style="color: red;">Error: Failed to fetch Bitcoin price, and manual initial price is invalid.</p>';
+            return;
+        }
+        console.log(`Using manual initial price: $${initialPrice}`);
+    }
+
     const savingsAmount = parseFloat(document.getElementById('savings_amount').value);
     const frequency = document.getElementById('frequency').value;
     const growth = parseFloat(document.getElementById('growth').value) / 100;
