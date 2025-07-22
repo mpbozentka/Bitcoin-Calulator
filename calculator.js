@@ -1,17 +1,13 @@
-// Global variable to store Chart.js instance
 let chartInstance = null;
 
 async function calculate() {
-    // Log to confirm function is called
     console.log('Calculate button clicked');
 
-    // Destroy previous chart if it exists
     if (chartInstance) {
         chartInstance.destroy();
         chartInstance = null;
     }
 
-    // Retrieve and parse input values
     let initialPrice;
     try {
         const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
@@ -39,7 +35,6 @@ async function calculate() {
     const interestRate = parseFloat(document.getElementById('interest_rate').value) / 100;
     const loanTerm = parseInt(document.getElementById('loan_term').value);
 
-    // Enhanced validation
     const resultDiv = document.getElementById('result');
     if (isNaN(initialPrice) || isNaN(savingsAmount) || isNaN(growth) || isNaN(totalCost) ||
         isNaN(downPayment) || isNaN(interestRate) || isNaN(loanTerm)) {
@@ -52,8 +47,8 @@ async function calculate() {
         console.error('Validation failed: Negative or zero inputs');
         return;
     }
-    if (endDate < startDate || purchaseDate < endDate) {
-        resultDiv.innerHTML = '<p style="color: red;">Error: Ensure Savings End Date is after Start Date, and Purchase Date is after End Date.</p>';
+    if (endDate < startDate || purchaseDate < startDate) {
+        resultDiv.innerHTML = '<p style="color: red;">Error: Ensure Savings End Date is after Start Date, and Purchase Date is after or on Start Date.</p>';
         console.error('Validation failed: Invalid date order');
         return;
     }
@@ -63,7 +58,6 @@ async function calculate() {
         return;
     }
 
-    // Calculate loan amount and monthly payment
     const loanAmount = totalCost - downPayment;
     const monthlyRate = interestRate / 12;
     let payment = 0;
@@ -73,10 +67,8 @@ async function calculate() {
         payment = Number(payment.toFixed(2));
     }
 
-    // Calculate Bitcoin monthly growth rate
     const monthlyGrowthRate = Math.pow(1 + growth, 1 / 12) - 1;
 
-    // Initialize simulation variables
     let btc = frequency === 'lump_sum' ? savingsAmount / initialPrice : 0;
     let bitcoinPrice = initialPrice;
     const dates = [];
@@ -88,11 +80,9 @@ async function calculate() {
     let btcAtPurchase = 0;
     let btcAtEnd = 0;
 
-    // Define simulation period (end at purchase date + loan term)
     const simulationEnd = new Date(purchaseDate);
     simulationEnd.setMonth(simulationEnd.getMonth() + loanTerm);
 
-    // Generate monthly dates
     const monthlyDates = [];
     let currentDate = new Date(startDate);
     currentDate.setDate(1);
@@ -101,20 +91,17 @@ async function calculate() {
         currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    // Simulate each month
     for (let i = 0; i < monthlyDates.length; i++) {
         const date = monthlyDates[i];
         const dateStr = date.toLocaleDateString();
 
-        // Record current state (only if no shortfall)
         if (!shortfall) {
             dates.push(dateStr);
             btcValues.push(Number(btc.toFixed(8)));
             usdValues.push(Number((btc * bitcoinPrice).toFixed(2)));
         }
 
-        // Add savings if within savings period
-        if (date >= startDate && date <= endDate && frequency !== 'lump_sum') {
+        if (date >= startDate && date <= endDate && !shortfall) {
             let savingsUsdThisMonth = 0;
             if (frequency === 'monthly') {
                 savingsUsdThisMonth = savingsAmount;
@@ -130,7 +117,6 @@ async function calculate() {
             btc = Number(btc.toFixed(8));
         }
 
-        // Record BTC at key events
         if (dateStr === startDate.toLocaleDateString()) {
             btcAtStart = btc;
         }
@@ -141,7 +127,6 @@ async function calculate() {
                 if (btc < btcDownPayment) {
                     shortfall = true;
                     shortfallDate = dateStr;
-                    // Push shortfall state and stop
                     dates.push(dateStr);
                     btcValues.push(0);
                     usdValues.push(0);
@@ -153,13 +138,11 @@ async function calculate() {
             }
         }
 
-        // Subtract loan payment if within loan period
         if (!shortfall && date >= purchaseDate && date <= simulationEnd && loanAmount > 0) {
             const btcPayment = payment / bitcoinPrice;
             if (btc < btcPayment) {
                 shortfall = true;
                 shortfallDate = dateStr;
-                // Push shortfall state and stop
                 dates.push(dateStr);
                 btcValues.push(0);
                 usdValues.push(0);
@@ -170,12 +153,10 @@ async function calculate() {
             btc = Number(btc.toFixed(8));
         }
 
-        // Apply Bitcoin price growth
         bitcoinPrice *= (1 + monthlyGrowthRate);
         bitcoinPrice = Number(bitcoinPrice.toFixed(2));
     }
 
-    // Record final state if no shortfall
     if (!shortfall && dates[dates.length - 1] !== simulationEnd.toLocaleDateString()) {
         btcAtEnd = btc;
         dates.push(simulationEnd.toLocaleDateString());
@@ -183,7 +164,6 @@ async function calculate() {
         usdValues.push(Number((btc * bitcoinPrice).toFixed(2)));
     }
 
-    // Display result
     if (shortfall) {
         resultDiv.innerHTML = `<p style="color: red;">Insufficient Bitcoin to cover down payment or loan payments. Shortfall detected on ${shortfallDate}.</p>` +
                              `<p>Monthly Loan Payment: $${payment.toFixed(2)}</p>`;
@@ -194,10 +174,8 @@ async function calculate() {
                              `<p>Final Bitcoin holdings: ${btc.toFixed(6)} BTC, worth $${finalUsdValue.toFixed(2)} USD</p>`;
     }
 
-    // Show CSV export button
     document.getElementById('export-csv').style.display = 'block';
 
-    // Create Chart.js graph
     const ctx = document.getElementById('savingsChart').getContext('2d');
     chartInstance = new Chart(ctx, {
         type: 'line',
@@ -309,7 +287,6 @@ async function calculate() {
         }
     });
 
-    // Store data for CSV export
     console.log('Before setting chartData:', {
         dates: dates || 'undefined',
         btcValues: btcValues || 'undefined',
